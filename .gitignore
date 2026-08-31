@@ -1,5 +1,11 @@
 .DS_Store
 DerivedData/
 build/
+build-*/
+release/
+*.xcarchive/
+*.p8
+.env
+.env.*
 *.xcuserstate
 xcuserdata/

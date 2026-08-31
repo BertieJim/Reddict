@@ -1,35 +1,63 @@
+<p align="center">
+  <img src="Reddict/Assets.xcassets/AppIcon.appiconset/AppIcon-128@2x.png" width="128" alt="Reddict icon">
+</p>
+
 # Reddict
 
-一个只住在 macOS 菜单栏里的多语言语境助手，可按用户的界面/解释语言和学习水平精读多语言内容。
+Reddict 是一个常驻 macOS 菜单栏的多语言语境助手。它把翻译、精读、词汇、句法、文化背景、自然回复和表达改写放进同一个轻量浮窗，帮助你读懂字面之外的意思。
 
-## 功能
+## 核心能力
 
-- 综合精读：本地规则立即按完整句子或语义块切分，不等待、不消耗模型 Token
-- 长文本只自动深挖较长或高难度段；短/简单段保留在原位，可单独点「深度分析」
-- 缺少明确句界的长块会先由模型做轻量语义分段，并返回 0–100 难度分
-- 分句卡片先显示；每个深度分析段独立请求，最多 3 路并行，哪个先返回就先更新哪个卡片
-- 等待中的卡片只显示当前文字状态，不用转圈或骨架屏打断阅读
-- 单段使用独立的 8,000 Token 输出预算；检测到截断或损坏 JSON 后会自动压缩内容重试一次
-- 信达雅翻译、实词、句法、文化/梗合在同一个页面
-- 日语：假名、原型、词性、活用、JLPT 等级；排除助词与功能词
-- 可添加多种学习语言；除日语使用 JLPT 外，其余语言统一使用 CEFR A1–C2
-- 界面/解释语言可选简体中文或 English；精读译文的目标语言可独立设置
-- 预设之外可输入自定义语言；当前模型会用一次请求验证其是否为可翻译语言、能否可靠理解分析
-- 古汉语、拉丁语、克里贡语等真实历史/构造语言可以通过；物品、食物或无意义名称会被拒绝
-- 当前模型无法分析某语言时显示模型品牌建议；模型拒绝推荐时回退建议 OpenAI GPT
-- 可选择只显示当前水平及以上的分析项目，或显示全部有价值的分析项目
-- 词汇只保留超出当前水平的重要词、习语、特殊转义和易混名词，难度标签固定在最左侧
-- 句法使用彩色成分块与下标标记主语、动词、宾语等，并在下方对应解释
-- 句法、词汇、语法文化词源及俚语区块默认折叠
-- 固定分析顺序：核心骨架 → 组成部分 → 易混淆点
-- 俚语固定结构：字面翻译 → 适用场景 → 文化与历史
-- 四种自然回复，以及支持预设/已验证自定义目标语言的 How To Say
-- 本地结构化历史与缓存：同样内容再次查询不调用模型，不消耗 Token
-- 原生预设 DeepSeek、Gemini、Kimi、CLI-Proxy，也可接任意 OpenAI-compatible API
+### 翻译与精读
 
-## 运行
+- 本地先按完整句子或语义块分段，不等待模型，也不消耗 Token。
+- 默认先返回整段译文，再并行分析较长或较难的片段；最多同时处理 3 段。
+- 每句话都可点击查看对应译文，并可单独触发「精读这句」。
+- 单句译文从整段译文本地对齐，不重复请求模型。
+- 精读结果包含核心骨架、词汇、句法、易混淆点，以及文化、词源和俚语说明。
+- 日语支持假名、原型、词性、活用和 JLPT 等级；其他语言使用 CEFR A1–C2。
 
-用 Xcode 打开 `Reddict.xcodeproj`，运行 `Reddict` scheme。或者：
+### 回复与表达
+
+- 「怎么回」一次生成四种自然回复。
+- `How To Say` 支持多个目标语言和可编辑文风。
+- 文风可以启用、停用、新增、改名、编辑 Prompt、删除或恢复预设。
+- 语音输入使用 Apple Speech；停止录音后只把转写结果写入输入框，不会自动发送。
+
+### 模型与语言
+
+- 内置 DeepSeek、Gemini、Kimi 和 CLI-Proxy 预设，也支持任意 OpenAI-compatible Chat Completions API。
+- 可通过兼容的 `GET /models` 接口刷新模型列表，也可以手动输入模型名。
+- 精读、怎么回和 `How To Say` 可分别绑定不同的 API 配置。
+- 界面语言、解释语言、翻译目标语言和学习水平彼此独立。
+- 支持经模型验证的自定义自然语言、历史语言与构造语言。
+
+### 本地体验
+
+- 同样的输入和配置会命中本地历史缓存，不重复消耗 Token。
+- 历史记录可搜索并一键清空。
+- 浮窗保持在其他应用之上；切换功能时复用同一个窗口。
+- 菜单栏应用，不占用 Dock。
+
+## 快捷键
+
+| 功能 | 快捷键 |
+| --- | --- |
+| 翻译 / 精读 | `⌃⌥⌘T` |
+| 怎么回 | `⌃⌥⌘L` |
+| How To Say | `⌃⌥⌘H` |
+
+再次按当前功能的快捷键会隐藏浮窗；按另一个快捷键会在现有浮窗中切换功能。也可以选中文字后使用「右键 → 服务 → Reddict」。
+
+## 系统要求
+
+- macOS 15.0 或更高版本
+- 包含 macOS 15 SDK 的 Xcode
+- 至少一个可用的 OpenAI-compatible API Key
+
+## 本地运行
+
+用 Xcode 打开 `Reddict.xcodeproj` 并运行 `Reddict` scheme，或者执行：
 
 ```bash
 xcodebuild -project Reddict.xcodeproj \
@@ -41,39 +69,56 @@ xcodebuild -project Reddict.xcodeproj \
 open DerivedData/Build/Products/Debug/Reddict.app
 ```
 
-首次启动后，点菜单栏气泡图标 →「模型与 API 设置」：
+首次启动后，点击菜单栏图标并打开「语言、显示与 API 设置」：
 
-1. 选择 DeepSeek、Gemini、Kimi、CLI-Proxy 或自定义。
-2. 可直接修改 API Base URL 与 Model。
-3. 输入 API Key，点击「测试连接」。App 会发送一个极小的真实模型请求，并显示响应时间与模型回复。
-4. 测试通过后才能「保存并使用」。Reddict 只使用你在设置页手动输入并保存的 Key，不读取 macOS 钥匙串。
-5. 自定义服务需要兼容 OpenAI `POST /chat/completions`。如果不接受 `response_format`，关闭设置中的 JSON 开关后重新测试。
+1. 选择服务商，或填写自定义 Base URL。
+2. 输入 API Key 和模型名；需要时刷新模型列表。
+3. 点击「测试连接」。
+4. 为精读、怎么回和 `How To Say` 选择配置，然后保存。
+5. 设置界面语言、翻译目标、学习语言和学习水平。
 
-同一设置页可设置界面/解释语言、精读翻译目标、学习语言与水平：日语使用 JLPT，其余语言使用 CEFR。自定义语言必须先由当前已保存的模型验证，通过后才会进入语言库并可保存使用。
+远程 API 必须使用 HTTPS；HTTP 只允许 `localhost`、`127.0.0.1` 等本机地址。请求不会自动跟随重定向，避免凭据被转发到其他主机。
 
-CLI-Proxy 预设来自 `SELF_API_USAGE.md`：Base URL 为 `https://studyhuyu.com/llm/v1`。出于安全考虑，文档中的 Key 不会写进 App，仍需手动输入。
+## 隐私与权限
 
-## 使用
+- Reddict 只使用你在应用内手动输入并保存的 API Key，不扫描环境变量，也不读取或迁移其他 macOS 钥匙串项目。
+- 历史记录保存在当前用户的应用容器中；目录权限为 `700`，历史文件权限为 `600`。
+- 麦克风和语音识别权限只在点击 `How To Say` 的语音按钮后请求。
+- App Store 构建启用 App Sandbox，仅声明出站网络和麦克风输入权限。
 
-1. 复制任意语言文字，按 `⌃⌥⌘L`，弹出综合精读；再次按下隐藏，第三次按下恢复原任务。
-2. 或在浏览器选中文字，右键 → 服务 → `Reddict · 综合精读`。
-3. 浮窗切换到其他 App 时仍保持在前面；隐藏或关闭浮窗不会取消正在运行的模型任务。
-4. 精读和回复上方的文字框可以直接输入、粘贴和修改，点击「开始精读」或「生成回复」。
-   精读开始后会立刻看到本地分句结果，各句分析随后逐卡片出现。
-5. 浮框右上角时钟可检索历史记录；命中缓存时底部显示「来自历史 · 0 Token」。
-6. `How To Say` 中输入内容，选择任一预设或已验证的自定义语言后点 `Go`。
+## 开发与验证
 
-如果系统服务未出现，到「系统设置 → 键盘 → 键盘快捷键 → 服务 → 文本」确认 Reddict 已启用，或重新登录一次。
+格式化 Swift 源码：
 
-## 安装到 Applications
+```bash
+xcrun swift-format format --in-place --recursive Reddict Tests
+```
+
+运行全部本地 smoke tests：
+
+```bash
+Scripts/run-smoke-tests.sh
+```
+
+验证 Debug 构建：
 
 ```bash
 xcodebuild -project Reddict.xcodeproj \
   -scheme Reddict \
-  -configuration Release \
-  -derivedDataPath build \
+  -configuration Debug \
+  -derivedDataPath build-debug \
   build
-
-ditto build/Build/Products/Release/Reddict.app /Applications/Reddict.app
-open /Applications/Reddict.app
 ```
+
+## 项目结构
+
+```text
+Reddict/
+├── Reddict/                 AppKit / SwiftUI 应用源码与资源
+├── Tests/                   可独立编译运行的 smoke tests
+├── Scripts/                 本地开发辅助脚本
+├── Reddict.xcodeproj/       Xcode 工程与共享 scheme
+└── ExportOptions.plist      App Store Connect 导出配置
+```
+
+Bundle ID：`com.archest.reddict`

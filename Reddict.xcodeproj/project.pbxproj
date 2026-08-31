@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		A00000000000000000000001 /* ReddictApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000001 /* ReddictApp.swift */; };
 		A00000000000000000000002 /* AnalysisModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000002 /* AnalysisModels.swift */; };
-		A00000000000000000000003 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000003 /* KeychainStore.swift */; };
+		A00000000000000000000003 /* APIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000003 /* APIKeyStore.swift */; };
 		A00000000000000000000004 /* LLMClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000004 /* LLMClient.swift */; };
 		A00000000000000000000005 /* AnalysisViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000005 /* AnalysisViewModel.swift */; };
 		A00000000000000000000006 /* SelectionServicesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000006 /* SelectionServicesProvider.swift */; };
@@ -20,12 +20,14 @@
 		A00000000000000000000011 /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000013 /* HistoryStore.swift */; };
 		A00000000000000000000012 /* TextSegmenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000014 /* TextSegmenter.swift */; };
 		A00000000000000000000013 /* LearnerPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000015 /* LearnerPreferences.swift */; };
+		A00000000000000000000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000016 /* Assets.xcassets */; };
+		A00000000000000000000015 /* VoiceInputTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000017 /* VoiceInputTranscriber.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		B00000000000000000000001 /* ReddictApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReddictApp.swift; sourceTree = "<group>"; };
 		B00000000000000000000002 /* AnalysisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisModels.swift; sourceTree = "<group>"; };
-		B00000000000000000000003 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		B00000000000000000000003 /* APIKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyStore.swift; sourceTree = "<group>"; };
 		B00000000000000000000004 /* LLMClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMClient.swift; sourceTree = "<group>"; };
 		B00000000000000000000005 /* AnalysisViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisViewModel.swift; sourceTree = "<group>"; };
 		B00000000000000000000006 /* SelectionServicesProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionServicesProvider.swift; sourceTree = "<group>"; };
@@ -38,6 +40,9 @@
 		B00000000000000000000013 /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
 		B00000000000000000000014 /* TextSegmenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSegmenter.swift; sourceTree = "<group>"; };
 		B00000000000000000000015 /* LearnerPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnerPreferences.swift; sourceTree = "<group>"; };
+		B00000000000000000000016 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B00000000000000000000017 /* VoiceInputTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceInputTranscriber.swift; sourceTree = "<group>"; };
+		B00000000000000000000018 /* Reddict.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Reddict.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,12 +69,15 @@
 			children = (
 				B00000000000000000000001 /* ReddictApp.swift */,
 				B00000000000000000000002 /* AnalysisModels.swift */,
-				B00000000000000000000003 /* KeychainStore.swift */,
+				B00000000000000000000003 /* APIKeyStore.swift */,
 				B00000000000000000000004 /* LLMClient.swift */,
 				B00000000000000000000012 /* LLMConfiguration.swift */,
 				B00000000000000000000013 /* HistoryStore.swift */,
 				B00000000000000000000014 /* TextSegmenter.swift */,
 				B00000000000000000000015 /* LearnerPreferences.swift */,
+				B00000000000000000000016 /* Assets.xcassets */,
+				B00000000000000000000017 /* VoiceInputTranscriber.swift */,
+				B00000000000000000000018 /* Reddict.entitlements */,
 				B00000000000000000000005 /* AnalysisViewModel.swift */,
 				B00000000000000000000006 /* SelectionServicesProvider.swift */,
 				B00000000000000000000007 /* FloatingPanelController.swift */,
@@ -150,6 +158,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A00000000000000000000014 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -162,7 +171,7 @@
 			files = (
 				A00000000000000000000001 /* ReddictApp.swift in Sources */,
 				A00000000000000000000002 /* AnalysisModels.swift in Sources */,
-				A00000000000000000000003 /* KeychainStore.swift in Sources */,
+				A00000000000000000000003 /* APIKeyStore.swift in Sources */,
 				A00000000000000000000004 /* DeepSeekClient.swift in Sources */,
 				A00000000000000000000005 /* AnalysisViewModel.swift in Sources */,
 				A00000000000000000000006 /* SelectionServicesProvider.swift in Sources */,
@@ -173,6 +182,7 @@
 				A00000000000000000000011 /* HistoryStore.swift in Sources */,
 				A00000000000000000000012 /* TextSegmenter.swift in Sources */,
 				A00000000000000000000013 /* LearnerPreferences.swift in Sources */,
+				A00000000000000000000015 /* VoiceInputTranscriber.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -285,12 +295,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				AD_HOC_CODE_SIGNING_ALLOWED = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Reddict/Reddict.entitlements;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = H8YGFT9U6N;
-				ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Reddict/Info.plist;
@@ -301,7 +312,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.archest.Reddict;
+				PRODUCT_BUNDLE_IDENTIFIER = com.archest.reddict;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SUPPORTED_PLATFORMS = macosx;
@@ -315,13 +326,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				AD_HOC_CODE_SIGNING_ALLOWED = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Manual;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Reddict/Reddict.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = H8YGFT9U6N;
-				ENABLE_APP_SANDBOX = NO;
-				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Reddict/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -331,7 +342,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.archest.Reddict;
+				PRODUCT_BUNDLE_IDENTIFIER = com.archest.reddict;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SUPPORTED_PLATFORMS = macosx;
