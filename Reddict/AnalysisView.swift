@@ -8,6 +8,8 @@ struct AnalysisView: View {
   @State private var isConfirmingHistoryClear = false
   @State private var isEditingSource = false
   @State private var selectedConstituentIndexBySegmentID: [String: Int] = [:]
+  @State private var hoveredCloseReadingSegmentID: String?
+  @State private var fullTranslationTextHeight: CGFloat = 72
 
   private let coral = Color(red: 1.0, green: 0.31, blue: 0.20)
   private let ink = Color.primary.opacity(0.92)
@@ -55,6 +57,8 @@ struct AnalysisView: View {
     .onChange(of: viewModel.selectedText) { _, _ in
       isEditingSource = false
       selectedConstituentIndexBySegmentID.removeAll()
+      hoveredCloseReadingSegmentID = nil
+      fullTranslationTextHeight = 72
     }
     .alert(
       ui("清空全部历史？", "Clear all history?"),
@@ -247,7 +251,9 @@ struct AnalysisView: View {
     SegmentedSourceTextView(
       segments: viewModel.closeReadingProgress.map(\.source),
       selectedSegmentID: viewModel.selectedCloseReadingSegmentID,
-      onSelect: viewModel.selectCloseReadingSegment
+      highlightedSegmentID: hoveredCloseReadingSegmentID,
+      onSelect: viewModel.selectCloseReadingSegment,
+      onHover: { hoveredCloseReadingSegmentID = $0 }
     )
     .accessibilityLabel(
       ui(
@@ -523,7 +529,11 @@ struct AnalysisView: View {
   }
 
   private func priorityTranslationCard(_ overview: PriorityTranslationResponse) -> some View {
-    VStack(alignment: .leading, spacing: 13) {
+    let sourceSegments = viewModel.closeReadingProgress.map(\.source)
+    let translations = Dictionary(uniqueKeysWithValues: sourceSegments.map {
+      ($0.id, viewModel.closeReadingTranslation(for: $0.id))
+    })
+    return VStack(alignment: .leading, spacing: 13) {
       HStack {
         sectionEyebrow(
           ui("整段译文", "Full translation"),
@@ -540,11 +550,29 @@ struct AnalysisView: View {
         }
       }
       HStack(alignment: .top, spacing: 12) {
-        Text(overview.completeTranslation)
-          .font(.system(size: 18, weight: .medium, design: .serif))
-          .lineSpacing(6)
-          .textSelection(.enabled)
-          .frame(maxWidth: .infinity, alignment: .leading)
+        if sourceSegments.isEmpty || translations.values.contains(where: \.isEmpty) {
+          Text(overview.completeTranslation)
+            .font(.system(size: 18, weight: .medium, design: .serif))
+            .lineSpacing(6)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+          SegmentedSourceTextView(
+            segments: sourceSegments,
+            textBySegmentID: translations,
+            selectedSegmentID: nil,
+            highlightedSegmentID: hoveredCloseReadingSegmentID,
+            fontSize: 18,
+            fontWeight: .medium,
+            lineSpacing: 6,
+            paragraphSpacing: 11,
+            contentHeight: $fullTranslationTextHeight,
+            onSelect: viewModel.selectCloseReadingSegment,
+            onHover: { hoveredCloseReadingSegmentID = $0 }
+          )
+          .frame(height: min(max(fullTranslationTextHeight, 54), 300))
+          .accessibilityLabel(ui("与原文逐句对应的整段译文", "Full translation aligned sentence by sentence"))
+        }
         copyButton(overview.completeTranslation)
       }
       if !overview.overallTone.isEmpty {
@@ -825,21 +853,14 @@ struct AnalysisView: View {
       translation.flatMap { $0.isEmpty ? nil : $0 }
       ?? segment.translation
     return VStack(alignment: .leading, spacing: 15) {
-      HStack(alignment: .firstTextBaseline) {
-        Text(String(format: "%02d", number))
-          .font(.system(size: 10, weight: .bold, design: .monospaced))
-          .foregroundStyle(coral)
-        Text(segment.source)
-          .font(.system(size: 15, weight: .semibold, design: .serif))
-          .textSelection(.enabled)
-        Spacer(minLength: 8)
-        if let difficultyScore, difficultyScore > 0 {
-          Text("\(ui("难度", "Level")) \(difficultyScore)")
-            .font(.system(size: 8.5, weight: .bold, design: .rounded))
-            .foregroundStyle(difficultyColor(difficultyScore))
-        }
-        copyButton(segment.source)
-      }
+      coloredSourceSentence(
+        segmentID: segment.id,
+        number: number,
+        source: segment.source,
+        syntax: segment.syntaxAnalysis,
+        difficultyScore: difficultyScore
+      )
+
       VStack(alignment: .leading, spacing: 7) {
         HStack {
           sectionEyebrow(ui("本句译文", "Sentence translation"), icon: "text.quote")
@@ -869,11 +890,7 @@ struct AnalysisView: View {
         )
       }
 
-      syntaxBlock(
-        segmentID: segment.id,
-        source: segment.source,
-        syntax: segment.syntaxAnalysis
-      )
+      syntaxBlock(segment.syntaxAnalysis)
 
       if !segment.alternativeParses.isEmpty {
         disclosureSection(ui("多种句法解释", "Alternative parses"), icon: "arrow.triangle.branch") {
@@ -917,93 +934,117 @@ struct AnalysisView: View {
     .resultCard()
   }
 
-  private func syntaxBlock(
+  private func coloredSourceSentence(
     segmentID: String,
+    number: Int,
     source: String,
-    syntax: SyntaxAnalysis
+    syntax: SyntaxAnalysis,
+    difficultyScore: Int?
   ) -> some View {
     let selectedIndex = min(
       selectedConstituentIndexBySegmentID[segmentID] ?? 0,
       max(0, syntax.constituents.count - 1)
     )
-    return disclosureSection(ui("句法拆解", "Syntax"), icon: "point.3.connected.trianglepath.dotted") {
-      VStack(alignment: .leading, spacing: 13) {
-        orderedAnalysisRow("1", ui("核心骨架", "Core structure"), syntax.coreStructure)
-        if !syntax.constituents.isEmpty {
-          VStack(alignment: .leading, spacing: 9) {
-            miniStep("2", ui("彩色成分", "Color-coded components"))
-            ComponentFlowLayout(spacing: 6) {
-              ForEach(Array(syntax.constituents.enumerated()), id: \.element.id) { index, item in
-                let color = componentColor(item.category)
-                let isSelected = index == selectedIndex
-                Button {
-                  selectedConstituentIndexBySegmentID[segmentID] = index
-                } label: {
-                  VStack(alignment: .leading, spacing: 1) {
-                    Text(item.text)
-                      .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                      .foregroundStyle(ink)
-                    Text(item.role)
-                      .font(.system(size: 7.5, weight: .bold))
-                      .foregroundStyle(color)
-                  }
-                  .padding(.horizontal, 7)
-                  .padding(.vertical, 5)
-                  .background(
-                    color.opacity(isSelected ? 0.22 : 0.13),
-                    in: RoundedRectangle(cornerRadius: 7)
-                  )
-                  .overlay {
-                    RoundedRectangle(cornerRadius: 7)
-                      .stroke(
-                        color.opacity(isSelected ? 0.72 : 0),
-                        lineWidth: isSelected ? 1.2 : 0
-                      )
-                  }
-                  .overlay(alignment: .bottomTrailing) {
-                    Text("\(index + 1)")
-                      .font(.system(size: 6.5, weight: .bold))
-                      .foregroundStyle(color)
-                      .offset(x: 3, y: 4)
-                  }
-                  .contentShape(RoundedRectangle(cornerRadius: 7))
-                }
-                .buttonStyle(.plain)
-                .help(ui("查看这个成分的释义", "Show this component's explanation"))
-                .accessibilityLabel("\(item.text)，\(item.role)")
-                .accessibilityAddTraits(isSelected ? .isSelected : [])
-              }
-            }
-            .accessibilityLabel(source)
+    return VStack(alignment: .leading, spacing: 9) {
+      HStack(alignment: .center, spacing: 8) {
+        Text(String(format: "%02d", number))
+          .font(.system(size: 10, weight: .bold, design: .monospaced))
+          .foregroundStyle(coral)
+        sectionEyebrow(ui("原句", "Original sentence"), icon: "quote.opening")
+        Spacer(minLength: 8)
+        if let difficultyScore, difficultyScore > 0 {
+          Text("\(ui("难度", "Level")) \(difficultyScore)")
+            .font(.system(size: 8.5, weight: .bold, design: .rounded))
+            .foregroundStyle(difficultyColor(difficultyScore))
+        }
+        copyButton(source)
+      }
 
-            let selectedItem = syntax.constituents[selectedIndex]
-            let selectedColor = componentColor(selectedItem.category)
-            HStack(alignment: .top, spacing: 8) {
-              Text("\(selectedIndex + 1)")
-                .font(.system(size: 8, weight: .bold, design: .monospaced))
-                .foregroundStyle(.white)
-                .frame(width: 16, height: 16)
-                .background(selectedColor, in: Circle())
-              VStack(alignment: .leading, spacing: 2) {
-                Text(selectedItem.role)
-                  .font(.system(size: 9, weight: .bold))
-                  .foregroundStyle(selectedColor)
-                Text(selectedItem.explanation)
-                  .font(.system(size: 11))
-                  .foregroundStyle(.secondary)
-                  .lineSpacing(2)
-                  .textSelection(.enabled)
+      if syntax.constituents.isEmpty {
+        Text(source)
+          .font(.system(size: 15, weight: .semibold, design: .serif))
+          .textSelection(.enabled)
+      } else {
+        ComponentFlowLayout(spacing: 6) {
+          ForEach(Array(syntax.constituents.enumerated()), id: \.element.id) { index, item in
+            let color = componentColor(item.category)
+            let isSelected = index == selectedIndex
+            Button {
+              selectedConstituentIndexBySegmentID[segmentID] = index
+            } label: {
+              VStack(alignment: .leading, spacing: 1) {
+                Text(item.text)
+                  .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                  .foregroundStyle(ink)
+                Text(item.role)
+                  .font(.system(size: 7.5, weight: .bold))
+                  .foregroundStyle(color)
               }
+              .padding(.horizontal, 7)
+              .padding(.vertical, 5)
+              .background(
+                color.opacity(isSelected ? 0.22 : 0.13),
+                in: RoundedRectangle(cornerRadius: 7)
+              )
+              .overlay {
+                RoundedRectangle(cornerRadius: 7)
+                  .stroke(
+                    color.opacity(isSelected ? 0.72 : 0),
+                    lineWidth: isSelected ? 1.2 : 0
+                  )
+              }
+              .overlay(alignment: .bottomTrailing) {
+                Text("\(index + 1)")
+                  .font(.system(size: 6.5, weight: .bold))
+                  .foregroundStyle(color)
+                  .offset(x: 3, y: 4)
+              }
+              .contentShape(RoundedRectangle(cornerRadius: 7))
             }
-            .id("\(segmentID)-\(selectedIndex)")
-            .transition(.opacity.combined(with: .move(edge: .top)))
-            .animation(.easeOut(duration: 0.18), value: selectedIndex)
+            .buttonStyle(.plain)
+            .help(ui("查看这个成分的释义", "Show this component's explanation"))
+            .accessibilityLabel("\(item.text)，\(item.role)")
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
           }
+        }
+        .accessibilityLabel(source)
+
+        let selectedItem = syntax.constituents[selectedIndex]
+        let selectedColor = componentColor(selectedItem.category)
+        HStack(alignment: .top, spacing: 8) {
+          Text("\(selectedIndex + 1)")
+            .font(.system(size: 8, weight: .bold, design: .monospaced))
+            .foregroundStyle(.white)
+            .frame(width: 16, height: 16)
+            .background(selectedColor, in: Circle())
+          VStack(alignment: .leading, spacing: 2) {
+            Text(selectedItem.role)
+              .font(.system(size: 9, weight: .bold))
+              .foregroundStyle(selectedColor)
+            Text(selectedItem.explanation)
+              .font(.system(size: 11))
+              .foregroundStyle(.secondary)
+              .lineSpacing(2)
+              .textSelection(.enabled)
+          }
+        }
+        .id("\(segmentID)-\(selectedIndex)")
+        .transition(.opacity.combined(with: .move(edge: .top)))
+        .animation(.easeOut(duration: 0.18), value: selectedIndex)
+      }
+    }
+  }
+
+  private func syntaxBlock(_ syntax: SyntaxAnalysis) -> some View {
+    disclosureSection(ui("句法拆解", "Syntax"), icon: "point.3.connected.trianglepath.dotted") {
+      VStack(alignment: .leading, spacing: 13) {
+        if !syntax.coreStructure.isEmpty {
+          orderedAnalysisRow("1", ui("核心骨架", "Core structure"), syntax.coreStructure)
         }
         if !syntax.confusingPoints.isEmpty {
           VStack(alignment: .leading, spacing: 6) {
             miniStep("3", ui("易混淆点", "Potential confusion"))
-            ForEach(syntax.confusingPoints, id: \.self) { point in
+            ForEach(Array(syntax.confusingPoints.prefix(3)), id: \.self) { point in
               Text("• \(point)")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
@@ -1202,15 +1243,14 @@ struct AnalysisView: View {
     icon: String,
     @ViewBuilder content: @escaping () -> Content
   ) -> some View {
-    DisclosureGroup {
-      content()
-        .padding(.top, 9)
-    } label: {
-      sectionEyebrow(title, icon: icon)
-    }
-    .tint(coral)
-    .padding(12)
-    .background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 13))
+    ProtrudingDisclosureSection(
+      title: title,
+      icon: icon,
+      tint: coral,
+      collapseTitle: ui("收起", "Collapse"),
+      expandTitle: ui("展开", "Expand"),
+      content: content
+    )
   }
 
   private func repliesResult(_ result: AnalysisResponse) -> some View {
@@ -1357,12 +1397,69 @@ struct AnalysisView: View {
                 Text(ui("软件与解释语言", "App & explanation language"))
                   .font(.system(size: 10.5, weight: .semibold))
                   .frame(width: 150, alignment: .leading)
-                Picker("", selection: $viewModel.interfaceLanguageDraft) {
+                Menu {
                   ForEach(viewModel.interfaceLanguageCatalog) { language in
-                    Text(language.title).tag(language)
+                    Button {
+                      viewModel.interfaceLanguageDraft = language
+                      viewModel.interfaceLanguageMessage = ""
+                    } label: {
+                      if language == viewModel.interfaceLanguageDraft {
+                        Label(language.title, systemImage: "checkmark")
+                      } else {
+                        Text(language.title)
+                      }
+                    }
                   }
+
+                  Divider()
+
+                  Menu {
+                    if viewModel.availableInterfaceLanguages.isEmpty {
+                      Text(
+                        ui(
+                          "语言库中没有待增加的语言",
+                          "No language is waiting to be added"
+                        )
+                      )
+                    } else {
+                      ForEach(viewModel.availableInterfaceLanguages) { language in
+                        Button {
+                          viewModel.addInterfaceLanguage(language)
+                        } label: {
+                          if viewModel.preparingInterfaceLanguageID == language.id {
+                            Label(
+                              "\(language.displayName(for: viewModel.interfaceLanguageDraft)) · \(ui("正在翻译…", "Translating…"))",
+                              systemImage: "hourglass"
+                            )
+                          } else {
+                            Text(language.displayName(for: viewModel.interfaceLanguageDraft))
+                          }
+                        }
+                        .disabled(viewModel.isPreparingInterfaceLanguage)
+                      }
+                    }
+                  } label: {
+                    Label(ui("增加软件语言…", "Add app language…"), systemImage: "plus")
+                  }
+                  .disabled(
+                    viewModel.availableInterfaceLanguages.isEmpty
+                      || viewModel.isPreparingInterfaceLanguage
+                  )
+                } label: {
+                  HStack(spacing: 7) {
+                    Text(viewModel.interfaceLanguageDraft.title)
+                      .lineLimit(1)
+                    Spacer(minLength: 6)
+                    Image(systemName: "chevron.up.chevron.down")
+                      .font(.system(size: 8.5, weight: .semibold))
+                      .foregroundStyle(.secondary)
+                  }
+                  .font(.system(size: 11, weight: .medium))
+                  .padding(.horizontal, 10)
+                  .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                  .background(.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 7))
                 }
-                .pickerStyle(.menu)
+                .menuStyle(.borderlessButton)
                 .frame(maxWidth: .infinity, alignment: .leading)
               }
 
@@ -2340,10 +2437,118 @@ struct AnalysisView: View {
   }
 }
 
+private struct ProtrudingDisclosureSection<Content: View>: View {
+  let title: String
+  let icon: String
+  let tint: Color
+  let collapseTitle: String
+  let expandTitle: String
+  let content: Content
+
+  @State private var isExpanded = true
+
+  init(
+    title: String,
+    icon: String,
+    tint: Color,
+    collapseTitle: String,
+    expandTitle: String,
+    @ViewBuilder content: () -> Content
+  ) {
+    self.title = title
+    self.icon = icon
+    self.tint = tint
+    self.collapseTitle = collapseTitle
+    self.expandTitle = expandTitle
+    self.content = content()
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      Label(title.uppercased(), systemImage: icon)
+        .font(.system(size: 10, weight: .bold, design: .rounded))
+        .tracking(0.7)
+        .foregroundStyle(tint)
+        .padding(.trailing, 68)
+
+      if isExpanded {
+        content
+          .padding(.top, 9)
+          .transition(.opacity.combined(with: .move(edge: .top)))
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.vertical, 12)
+    .background {
+      RoundedRectangle(cornerRadius: 13)
+        .fill(.primary.opacity(0.035))
+        .padding(.horizontal, -10)
+    }
+    .overlay(alignment: .topTrailing) {
+      Button {
+        withAnimation(.easeOut(duration: 0.18)) {
+          isExpanded.toggle()
+        }
+      } label: {
+        HStack(spacing: 4) {
+          Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+            .font(.system(size: 7.5, weight: .bold))
+          Text(isExpanded ? collapseTitle : expandTitle)
+            .font(.system(size: 8.5, weight: .semibold))
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay {
+          Capsule().stroke(tint.opacity(0.22), lineWidth: 0.7)
+        }
+      }
+      .buttonStyle(.plain)
+      .offset(x: 9, y: 7)
+      .help(isExpanded ? collapseTitle : expandTitle)
+    }
+  }
+}
+
 private struct SegmentedSourceTextView: NSViewRepresentable {
   let segments: [SourceSegment]
+  let textBySegmentID: [String: String]
   let selectedSegmentID: String?
+  let highlightedSegmentID: String?
+  let fontSize: CGFloat
+  let fontWeight: NSFont.Weight
+  let lineSpacing: CGFloat
+  let paragraphSpacing: CGFloat
+  @Binding var contentHeight: CGFloat
   let onSelect: (String) -> Void
+  let onHover: (String?) -> Void
+
+  init(
+    segments: [SourceSegment],
+    textBySegmentID: [String: String] = [:],
+    selectedSegmentID: String?,
+    highlightedSegmentID: String? = nil,
+    fontSize: CGFloat = 13,
+    fontWeight: NSFont.Weight = .regular,
+    lineSpacing: CGFloat = 3,
+    paragraphSpacing: CGFloat = 9,
+    contentHeight: Binding<CGFloat> = .constant(0),
+    onSelect: @escaping (String) -> Void,
+    onHover: @escaping (String?) -> Void = { _ in }
+  ) {
+    self.segments = segments
+    self.textBySegmentID = textBySegmentID
+    self.selectedSegmentID = selectedSegmentID
+    self.highlightedSegmentID = highlightedSegmentID
+    self.fontSize = fontSize
+    self.fontWeight = fontWeight
+    self.lineSpacing = lineSpacing
+    self.paragraphSpacing = paragraphSpacing
+    _contentHeight = contentHeight
+    self.onSelect = onSelect
+    self.onHover = onHover
+  }
 
   func makeNSView(context: Context) -> NSScrollView {
     let scrollView = NSScrollView()
@@ -2372,12 +2577,14 @@ private struct SegmentedSourceTextView: NSViewRepresentable {
     )
     scrollView.documentView = textView
     configure(textView)
+    updateMeasuredHeight(in: scrollView, textView: textView)
     return scrollView
   }
 
   func updateNSView(_ scrollView: NSScrollView, context: Context) {
     guard let textView = scrollView.documentView as? InteractiveSegmentTextView else { return }
     configure(textView)
+    updateMeasuredHeight(in: scrollView, textView: textView)
   }
 
   private func configure(_ textView: InteractiveSegmentTextView) {
@@ -2386,8 +2593,32 @@ private struct SegmentedSourceTextView: NSViewRepresentable {
       content: content.text,
       spans: content.spans,
       selectedSegmentID: selectedSegmentID,
-      onSelect: onSelect
+      highlightedSegmentID: highlightedSegmentID,
+      onSelect: onSelect,
+      onHover: onHover
     )
+  }
+
+  private func updateMeasuredHeight(
+    in scrollView: NSScrollView,
+    textView: InteractiveSegmentTextView
+  ) {
+    DispatchQueue.main.async {
+      let width = max(1, scrollView.contentSize.width)
+      guard let layoutManager = textView.layoutManager,
+        let textContainer = textView.textContainer
+      else { return }
+      textContainer.containerSize = NSSize(
+        width: width,
+        height: .greatestFiniteMagnitude
+      )
+      layoutManager.ensureLayout(for: textContainer)
+      let usedHeight = layoutManager.usedRect(for: textContainer).height
+      let measured = ceil(usedHeight + textView.textContainerInset.height * 2)
+      if abs(contentHeight - measured) > 1 {
+        contentHeight = measured
+      }
+    }
   }
 
   private func attributedContent() -> (
@@ -2396,14 +2627,14 @@ private struct SegmentedSourceTextView: NSViewRepresentable {
   ) {
     let attributedText = NSMutableAttributedString()
     var spans: [InteractiveSegmentTextView.SegmentSpan] = []
-    let baseFont = NSFont.systemFont(ofSize: 13, weight: .regular)
+    let baseFont = NSFont.systemFont(ofSize: fontSize, weight: fontWeight)
     let font =
       baseFont.fontDescriptor.withDesign(.serif)
-      .flatMap { NSFont(descriptor: $0, size: 13) }
+      .flatMap { NSFont(descriptor: $0, size: fontSize) }
       ?? baseFont
     let paragraphStyle = NSMutableParagraphStyle()
-    paragraphStyle.lineSpacing = 3
-    paragraphStyle.paragraphSpacing = 9
+    paragraphStyle.lineSpacing = lineSpacing
+    paragraphStyle.paragraphSpacing = paragraphSpacing
     paragraphStyle.lineBreakMode = .byWordWrapping
     let attributes: [NSAttributedString.Key: Any] = [
       .font: font,
@@ -2413,6 +2644,8 @@ private struct SegmentedSourceTextView: NSViewRepresentable {
 
     var previousParagraphIndex: Int?
     for segment in segments {
+      let displayedText = textBySegmentID[segment.id] ?? segment.text
+      guard !displayedText.isEmpty else { continue }
       if let previousParagraphIndex {
         let separator =
           previousParagraphIndex == segment.paragraphIndex
@@ -2421,8 +2654,8 @@ private struct SegmentedSourceTextView: NSViewRepresentable {
         attributedText.append(NSAttributedString(string: separator, attributes: attributes))
       }
       let location = attributedText.length
-      attributedText.append(NSAttributedString(string: segment.text, attributes: attributes))
-      let range = NSRange(location: location, length: (segment.text as NSString).length)
+      attributedText.append(NSAttributedString(string: displayedText, attributes: attributes))
+      let range = NSRange(location: location, length: (displayedText as NSString).length)
       attributedText.addAttribute(.cursor, value: NSCursor.pointingHand, range: range)
       spans.append(.init(id: segment.id, range: range))
       previousParagraphIndex = segment.paragraphIndex
@@ -2440,21 +2673,27 @@ private final class InteractiveSegmentTextView: NSTextView {
   private var segmentSpans: [SegmentSpan] = []
   private var selectedSegmentID: String?
   private var hoveredSegmentID: String?
+  private var highlightedSegmentID: String?
   private var sentenceTrackingArea: NSTrackingArea?
   private var onSelect: ((String) -> Void)?
+  private var onHover: ((String?) -> Void)?
 
   func configure(
     content: NSAttributedString,
     spans: [SegmentSpan],
     selectedSegmentID: String?,
-    onSelect: @escaping (String) -> Void
+    highlightedSegmentID: String?,
+    onSelect: @escaping (String) -> Void,
+    onHover: @escaping (String?) -> Void
   ) {
     if attributedString() != content {
       textStorage?.setAttributedString(content)
     }
     segmentSpans = spans
     self.selectedSegmentID = selectedSegmentID
+    self.highlightedSegmentID = highlightedSegmentID
     self.onSelect = onSelect
+    self.onHover = onHover
     refreshSentenceHighlights()
   }
 
@@ -2477,6 +2716,7 @@ private final class InteractiveSegmentTextView: NSTextView {
     let segmentID = segmentID(at: event)
     if segmentID != hoveredSegmentID {
       hoveredSegmentID = segmentID
+      onHover?(segmentID)
       refreshSentenceHighlights()
     }
     if segmentID == nil {
@@ -2488,6 +2728,7 @@ private final class InteractiveSegmentTextView: NSTextView {
 
   override func mouseExited(with event: NSEvent) {
     hoveredSegmentID = nil
+    onHover?(nil)
     refreshSentenceHighlights()
     NSCursor.arrow.set()
   }
@@ -2534,9 +2775,9 @@ private final class InteractiveSegmentTextView: NSTextView {
     for span in segmentSpans {
       let color: NSColor?
       if span.id == selectedSegmentID {
-        color = NSColor(red: 1, green: 0.31, blue: 0.20, alpha: 0.17)
-      } else if span.id == hoveredSegmentID {
-        color = NSColor(red: 1, green: 0.31, blue: 0.20, alpha: 0.09)
+        color = NSColor(red: 1, green: 0.31, blue: 0.20, alpha: 0.21)
+      } else if span.id == hoveredSegmentID || span.id == highlightedSegmentID {
+        color = NSColor(red: 1, green: 0.31, blue: 0.20, alpha: 0.14)
       } else {
         color = nil
       }
@@ -2545,6 +2786,45 @@ private final class InteractiveSegmentTextView: NSTextView {
       }
     }
     textStorage.endEditing()
+    needsDisplay = true
+  }
+
+  override func draw(_ dirtyRect: NSRect) {
+    super.draw(dirtyRect)
+    guard let layoutManager, let textContainer else { return }
+
+    for span in segmentSpans {
+      let isSelected = span.id == selectedSegmentID
+      let isHighlighted =
+        span.id == hoveredSegmentID || span.id == highlightedSegmentID
+      guard isSelected || isHighlighted else { continue }
+
+      let glyphRange = layoutManager.glyphRange(
+        forCharacterRange: span.range,
+        actualCharacterRange: nil
+      )
+      let borderColor = NSColor(
+        red: 1,
+        green: 0.31,
+        blue: 0.20,
+        alpha: isSelected ? 0.9 : 0.72
+      )
+      borderColor.setStroke()
+      layoutManager.enumerateEnclosingRects(
+        forGlyphRange: glyphRange,
+        withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0),
+        in: textContainer
+      ) { [weak self] rect, _ in
+        guard let self else { return }
+        let origin = self.textContainerOrigin
+        let borderRect = rect
+          .offsetBy(dx: origin.x, dy: origin.y)
+          .insetBy(dx: -2.5, dy: -1.5)
+        let path = NSBezierPath(roundedRect: borderRect, xRadius: 4, yRadius: 4)
+        path.lineWidth = isSelected ? 1.35 : 1.1
+        path.stroke()
+      }
+    }
   }
 }
 

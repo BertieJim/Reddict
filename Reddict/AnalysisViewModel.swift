@@ -63,12 +63,7 @@ final class AnalysisViewModel: ObservableObject {
   @Published private(set) var isTestingConnection = false
   @Published private(set) var testedSettingsFingerprint: String?
   @Published var languageDrafts: [LanguageProficiency] = LearnerPreferences.defaults.languages
-  @Published var interfaceLanguageDraft: InterfaceLanguage = .simplifiedChinese {
-    didSet {
-      guard interfaceLanguageDraft != oldValue else { return }
-      prepareInterfaceLanguageIfNeeded()
-    }
-  }
+  @Published var interfaceLanguageDraft: InterfaceLanguage = .simplifiedChinese
   @Published var translationLanguageDraft: LearningLanguage = .chinese
   @Published var howToSayLanguageDrafts: [LearningLanguage] = LearningLanguage.allCases
   @Published var howToSayStyleDrafts: [HowToSayStyleProfile] = HowToSayStyleProfile.defaults
@@ -79,6 +74,7 @@ final class AnalysisViewModel: ObservableObject {
   @Published var customLanguageMessage = ""
   @Published private(set) var isValidatingCustomLanguage = false
   @Published private(set) var isPreparingInterfaceLanguage = false
+  @Published private(set) var preparingInterfaceLanguageID: String?
   @Published var interfaceLanguageMessage = ""
 
   @Published var howToSayInput = "" {
@@ -218,7 +214,18 @@ final class AnalysisViewModel: ObservableObject {
   }
 
   var interfaceLanguageCatalog: [InterfaceLanguage] {
-    InterfaceLanguage.allCases + customLanguageDrafts.map(InterfaceLanguage.custom(from:))
+    InterfaceLanguage.allCases + languageCatalog
+      .filter { $0.id != LearningLanguage.chinese.id && $0.id != LearningLanguage.english.id }
+      .map(InterfaceLanguage.custom(from:))
+      .filter { InterfaceLocalizationStore.hasTranslations(for: $0.id) }
+  }
+
+  var availableInterfaceLanguages: [LearningLanguage] {
+    languageCatalog.filter { language in
+      language.id != LearningLanguage.chinese.id
+        && language.id != LearningLanguage.english.id
+        && !InterfaceLocalizationStore.hasTranslations(for: language.id)
+    }
   }
 
   var howToSayLanguages: [LearningLanguage] {
@@ -470,6 +477,9 @@ final class AnalysisViewModel: ObservableObject {
     modelListTask?.cancel()
     customLanguageTestTask?.cancel()
     interfaceLocalizationTask?.cancel()
+    interfaceLocalizationTask = nil
+    isPreparingInterfaceLanguage = false
+    preparingInterfaceLanguageID = nil
     let provider = configurationStore.selectedProvider()
     providerDraft = provider
     loadSettingsDraft(for: provider)
@@ -479,7 +489,18 @@ final class AnalysisViewModel: ObservableObject {
     interfaceLanguageMessage = ""
     customLanguageInput = ""
     customLanguageDrafts = activePreferences.customLanguages
-    interfaceLanguageDraft = activePreferences.interfaceLanguage
+    let savedInterfaceLanguage = activePreferences.interfaceLanguage
+    if savedInterfaceLanguage.isCustom,
+      !InterfaceLocalizationStore.hasTranslations(for: savedInterfaceLanguage.id)
+    {
+      interfaceLanguageDraft = .simplifiedChinese
+      interfaceLanguageMessage = uiLanguage.text(
+        "当前软件语言需要重新生成界面译文，请从“增加软件语言”中添加。",
+        "The current app language needs a refreshed interface translation. Add it again from Add app language."
+      )
+    } else {
+      interfaceLanguageDraft = savedInterfaceLanguage
+    }
     translationLanguageDraft = activePreferences.translationLanguage
     howToSayLanguageDrafts = activePreferences.howToSayLanguages
     howToSayStyleDrafts = activePreferences.howToSayStyles
@@ -490,9 +511,7 @@ final class AnalysisViewModel: ObservableObject {
 
   func saveLearningPreferences() {
     let catalog = LearningLanguage.allCases + customLanguageDrafts
-    let interfaceCatalog =
-      InterfaceLanguage.allCases
-      + customLanguageDrafts.map(InterfaceLanguage.custom(from:))
+    let interfaceCatalog = interfaceLanguageCatalog
     guard interfaceCatalog.contains(interfaceLanguageDraft) else {
       learningSettingsMessage = uiLanguage.text(
         "请选择有效的软件与解释语言。",
@@ -503,10 +522,9 @@ final class AnalysisViewModel: ObservableObject {
     if interfaceLanguageDraft.isCustom,
       !InterfaceLocalizationStore.hasTranslations(for: interfaceLanguageDraft.id)
     {
-      prepareInterfaceLanguageIfNeeded()
       learningSettingsMessage = uiLanguage.text(
-        "正在生成该语言的界面译文，完成后再保存。",
-        "Generating the interface translation for this language. Save after it finishes."
+        "请先通过“增加软件语言”生成该语言的界面译文。",
+        "Generate this interface translation through Add app language first."
       )
       return
     }
@@ -643,7 +661,13 @@ final class AnalysisViewModel: ObservableObject {
 
   func removeCustomLanguage(_ language: LearningLanguage) {
     guard language.isCustom else { return }
-    interfaceLocalizationTask?.cancel()
+    if preparingInterfaceLanguageID == language.id {
+      interfaceLocalizationTask?.cancel()
+      interfaceLocalizationTask = nil
+      preparingInterfaceLanguageID = nil
+      isPreparingInterfaceLanguage = false
+      interfaceLanguageMessage = ""
+    }
     if interfaceLanguageDraft.id == language.id {
       interfaceLanguageDraft = .simplifiedChinese
     }
@@ -771,18 +795,16 @@ final class AnalysisViewModel: ObservableObject {
     }
   }
 
-  private func prepareInterfaceLanguageIfNeeded() {
+  func addInterfaceLanguage(_ learningLanguage: LearningLanguage) {
     interfaceLocalizationTask?.cancel()
     interfaceLanguageMessage = ""
-    guard interfaceLanguageDraft.isCustom else {
+    let language = InterfaceLanguage.custom(from: learningLanguage)
+    if InterfaceLocalizationStore.hasTranslations(for: language.id) {
       isPreparingInterfaceLanguage = false
-      return
-    }
-    if InterfaceLocalizationStore.hasTranslations(for: interfaceLanguageDraft.id) {
-      isPreparingInterfaceLanguage = false
+      preparingInterfaceLanguageID = nil
       interfaceLanguageMessage = uiLanguage.text(
-        "界面译文已缓存，可直接使用。",
-        "The cached interface translation is ready."
+        "该语言已经可以作为软件与解释语言使用。",
+        "This language is already available as the app and explanation language."
       )
       return
     }
@@ -791,19 +813,20 @@ final class AnalysisViewModel: ObservableObject {
       !apiKey.isEmpty
     else {
       isPreparingInterfaceLanguage = false
+      preparingInterfaceLanguageID = nil
       interfaceLanguageMessage = uiLanguage.text(
-        "请先为精读功能保存可用的 API 与 Key，再选择此界面语言。",
-        "Save a working API and key for Close Reading before selecting this app language."
+        "请先为精读功能保存可用的 API 与 Key，再增加软件语言。",
+        "Save a working API and key for Close Reading before adding an app language."
       )
       return
     }
 
-    let language = interfaceLanguageDraft
     let configuration = configurationStore.configuration(for: provider)
     isPreparingInterfaceLanguage = true
+    preparingInterfaceLanguageID = language.id
     interfaceLanguageMessage = uiLanguage.text(
-      "正在用 \(configuration.displayName) 生成一套界面译文…",
-      "Generating an interface translation with \(configuration.displayName)…"
+      "正在把软件界面翻译为 \(learningLanguage.displayName(for: uiLanguage))…",
+      "Translating the app interface into \(learningLanguage.displayName(for: uiLanguage))…"
     )
     interfaceLocalizationTask = Task { [weak self] in
       do {
@@ -814,13 +837,14 @@ final class AnalysisViewModel: ObservableObject {
           configuration: configuration,
           apiKey: apiKey
         )
-        guard !Task.isCancelled, self.interfaceLanguageDraft == language else { return }
+        guard !Task.isCancelled, self.preparingInterfaceLanguageID == language.id else { return }
         InterfaceLocalizationStore.save(translations, for: language.id)
         self.isPreparingInterfaceLanguage = false
+        self.preparingInterfaceLanguageID = nil
         self.interfaceLocalizationTask = nil
         self.interfaceLanguageMessage = self.uiLanguage.text(
-          "界面译文已生成并缓存，保存偏好设置后生效。",
-          "The interface translation is cached and will take effect after you save preferences."
+          "\(learningLanguage.displayName(for: self.uiLanguage)) 已翻译完成，现在可以在软件语言列表中选择。",
+          "\(learningLanguage.displayName(for: self.uiLanguage)) is ready and can now be selected from the app language list."
         )
         self.objectWillChange.send()
       } catch is CancellationError {
@@ -828,6 +852,7 @@ final class AnalysisViewModel: ObservableObject {
       } catch {
         guard !Task.isCancelled else { return }
         self?.isPreparingInterfaceLanguage = false
+        self?.preparingInterfaceLanguageID = nil
         self?.interfaceLocalizationTask = nil
         self?.interfaceLanguageMessage =
           self?.uiLanguage.text(

@@ -89,12 +89,18 @@ struct InterfaceLanguage: Codable, Hashable, Identifiable, Sendable {
 }
 
 enum InterfaceLocalizationStore {
-  private static let keyPrefix = "interface.localization.v1."
+  private static let keyPrefix = "interface.localization.v2."
 
   static let sourceStrings: [String] = [
     "Settings", "Interface, translation, learning levels, and OpenAI-compatible API",
     "Languages", "App & explanation language", "Close-reading translation",
     "The app language also controls model explanations, reply meanings, and back-translations.",
+    "Add app language…", "Translating…",
+    "No language is waiting to be added",
+    "This language is already available as the app and explanation language.",
+    "Save a working API and key for Close Reading before adding an app language.",
+    "Generate this interface translation through Add app language first.",
+    "The current app language needs a refreshed interface translation. Add it again from Add app language.",
     "Custom languages", "Verified", "Delete from language library",
     "For example: Classical Chinese, Latin, Klingon", "Testing", "Test & Add",
     "One model request checks whether it is a translatable language and whether the current model can analyze it. Failed entries are not saved.",

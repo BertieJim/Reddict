@@ -1,11 +1,31 @@
+# macOS
 .DS_Store
+**/.DS_Store
+
+# Xcode / Swift build products
 DerivedData/
+.build/
 build/
 build-*/
 release/
+*.app
+*.dSYM
+*.dSYM.zip
+*.ipa
 *.xcarchive/
+*.xcresult/
+
+# Per-user Xcode state
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
+xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Local secrets
 *.p8
 .env
 .env.*
-*.xcuserstate
-xcuserdata/
+!.env.example
